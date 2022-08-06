@@ -5,9 +5,9 @@
   "license": "MIT",
   "private": "true",
   "scripts": {
-    "start": "parcel objkts/index.html",
+    "start": "parcel animation/index.html",
     "deploy": "yarn build && vercel ./dist --prod",
-    "build": "parcel build objkts/index.html"
+    "build": "parcel build animation/index.html"
   },
   "dependencies": {
     "@parcel/transformer-typescript-tsc": "^2.3.1",
