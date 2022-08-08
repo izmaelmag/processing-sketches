@@ -40,7 +40,7 @@ const sketch = (p: P5) => {
   // Before sketch start
   p.preload = () => {
     gui.add(params, "debug");
-    gui.add(params, "n", 4, 100).step(1);
+    gui.add(params, "n", 4, params.size/6).step(1);
     gui.add(params, "noiseScale", 0, 1).step(0.001);
   };
 
@@ -60,7 +60,9 @@ const sketch = (p: P5) => {
 
     params.debug && stats.begin();
 
-    p.background(255, 50);
+    p.background(255);
+
+    const R = p.dist(0, 0, p.width, p.height)/2;
 
     for (let i = 0; i < params.n; i++) {
       for (let j = 0; j < params.n; j++) {
@@ -74,20 +76,14 @@ const sketch = (p: P5) => {
           0
         );
 
-        // let shapeNoise = noise(
-        //   1000 + i * params.noiseScale + p.sin((dt + 1000)/2000),
-        //   1000 + j * params.noiseScale + dt / 2000,
-        //   dt / 3000,
-        //   0
-        // );
+        // Distance to CENTER
+        const d = p.dist(x + p.sin(dt/1000) * 100, y + p.cos(dt/1000) * 1000, p.width / 2, p.height);
 
         let colorIndex = Math.ceil(
           p.map(colorNoise, -1, 1, 0, colorPalette.length - 1)
         );
 
-        let shapeIndex = Math.ceil(
-          p.map(colorNoise, -1, 1, 0, shapeRenderers.length - 1)
-        );
+        let shapeIndex = Math.ceil(p.map(Math.sin((dt - d*10*y/R)/1000), -1, 1, 0, shapeRenderers.length - 1));
 
         p.fill(colorPalette[colorIndex]);
 
