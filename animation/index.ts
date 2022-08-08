@@ -1,21 +1,47 @@
 import P5 from "p5";
 import Stats from "stats.js";
 import * as dat from "dat.gui";
+import { createNoise4D } from "simplex-noise";
 
 const params = {
-  size: 520,
+  size: 512,
+  background: 255,
   debug: true,
-  mouse: { x: 0, y: 0 },
-  dt: 0,
+  n: 60,
+  noiseScale: 0.05,
+  cellSize: 0,
 };
 
 const sketch = (p: P5) => {
+  const colorPalette = ["#ddfd0d", "#ff5b0f", "#ff0099", "#0084ff", "#6f00e6"];
   const stats = new Stats();
-  const gui = new dat.GUI({ name: "Params", });
+  const gui = new dat.GUI({ name: "Params" });
+
+  let dt = 0;
+  const noise = createNoise4D();
+
+  const fullSquare = (x: number, y: number) => {
+    p.rectMode(p.CENTER);
+    p.rect(x, y, params.cellSize, params.cellSize);
+  };
+
+  const halfSquare = (x: number, y: number) => {
+    p.rectMode(p.CENTER);
+    p.rect(x, y, params.cellSize / 2, params.cellSize / 2);
+  };
+
+  const quarterSquare = (x: number, y: number) => {
+    p.rectMode(p.CENTER);
+    p.rect(x, y, params.cellSize / 4, params.cellSize / 4);
+  };
+
+  const shapeRenderers = [fullSquare, fullSquare, halfSquare, quarterSquare];
 
   // Before sketch start
   p.preload = () => {
     gui.add(params, "debug");
+    gui.add(params, "n", 4, 100).step(1);
+    gui.add(params, "noiseScale", 0, 1).step(0.001);
   };
 
   p.setup = () => {
@@ -25,19 +51,52 @@ const sketch = (p: P5) => {
       stats.showPanel(0);
       document.body.appendChild(stats.dom);
     }
+
+    p.noStroke();
   };
 
   p.draw = () => {
+    params.cellSize = Math.ceil(params.size / params.n);
+
     params.debug && stats.begin();
 
-    // Increase counter
-    params.dt += p.deltaTime;
+    p.background(255, 50);
 
-    // Global mouse position
-    params.mouse = {
-      x: p.mouseX,
-      y: p.mouseY,
-    };
+    for (let i = 0; i < params.n; i++) {
+      for (let j = 0; j < params.n; j++) {
+        const x = params.cellSize / 2 + params.cellSize * i;
+        const y = params.cellSize / 2 + params.cellSize * j;
+
+        let colorNoise = noise(
+          i * params.noiseScale,
+          j * params.noiseScale + dt / 5000,
+          dt / 5000,
+          0
+        );
+
+        // let shapeNoise = noise(
+        //   1000 + i * params.noiseScale + p.sin((dt + 1000)/2000),
+        //   1000 + j * params.noiseScale + dt / 2000,
+        //   dt / 3000,
+        //   0
+        // );
+
+        let colorIndex = Math.ceil(
+          p.map(colorNoise, -1, 1, 0, colorPalette.length - 1)
+        );
+
+        let shapeIndex = Math.ceil(
+          p.map(colorNoise, -1, 1, 0, shapeRenderers.length - 1)
+        );
+
+        p.fill(colorPalette[colorIndex]);
+
+        shapeRenderers[shapeIndex](x, y);
+      }
+    }
+
+    // Increase counter
+    dt += p.deltaTime;
 
     params.debug && stats.end();
   };
