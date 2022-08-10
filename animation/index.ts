@@ -1,104 +1,142 @@
-import P5 from "p5";
+import P5, { Graphics } from "p5";
 import Stats from "stats.js";
-import * as dat from "dat.gui";
-import { createNoise4D } from "simplex-noise";
+import { createNoise3D } from "simplex-noise";
 
 const params = {
-  size: 512,
-  background: 255,
+  size: 640,
   debug: true,
-  n: 60,
-  noiseScale: 0.05,
-  cellSize: 0,
+  scaleFactor: 10,
 };
 
+let dt = 0;
+
+class Figure {
+  brightness: number;
+
+  f1: Point;
+  f2: Point;
+  f3: Point;
+  c1: Point;
+  c2: Point;
+  t: Point;
+
+  yOffset: number = 0;
+
+  constructor(brightness: number) {
+    this.brightness = brightness;
+    this.getFloorPoints();
+  }
+
+  getFloorPoints() {
+    let size = params.size / params.scaleFactor;
+
+    this.f1 = {
+      x: (Math.random() * size) / 2,
+      y: size,
+    };
+
+    this.f2 = {
+      x: size / 2 + (Math.random() * size) / 2,
+      y: size,
+    };
+
+    this.t = {
+      x:
+        40 / params.scaleFactor +
+        this.f1.x +
+        Math.random() * (this.f2.x - this.f1.x - 80 / params.scaleFactor),
+      y: (Math.random() * size) / 40 * params.scaleFactor,
+    };
+
+    this.c1 = {
+      x: this.f1.x + Math.random() * (this.t.x - this.f1.x) - 10 / params.scaleFactor,
+      y: 2 + this.t.y + (Math.random() * size) / 5,
+    };
+
+    this.c2 = {
+      x:
+        this.t.x +
+        (this.f2.x - this.t.x) / 4 +
+        Math.random() * ((this.f2.x - this.t.x) * 0.75),
+      y: this.c1.y,
+    };
+
+    this.f3 = {
+      x: this.t.x + (Math.random() * 2 - 1) * 2,
+      y: size,
+    };
+  }
+
+  draw(p: P5) {
+    p.fill(250 - (125 + Math.sin(dt / 1000) * 125));
+    p.noStroke();
+    p.beginShape();
+    p.vertex(this.f1.x, this.f1.y);
+    p.vertex(this.f3.x, this.f3.y);
+    p.vertex(this.t.x, this.t.y);
+    p.vertex(this.c1.x, this.c1.y);
+    p.endShape(p.CLOSE);
+    
+    p.fill(280 - (125 + Math.sin(dt / 1000) * 125));
+    p.beginShape();
+    p.vertex(this.f2.x, this.f2.y);
+    p.vertex(this.f3.x, this.f3.y);
+    p.vertex(this.t.x, this.t.y);
+    p.vertex(this.c2.x, this.c2.y);
+    p.endShape(p.CLOSE);
+  }
+}
+
 const sketch = (p: P5) => {
-  const colorPalette = ["#ddfd0d", "#ff5b0f", "#ff0099", "#0084ff", "#6f00e6"];
   const stats = new Stats();
-  const gui = new dat.GUI({ name: "Params" });
 
-  let dt = 0;
-  const noise = createNoise4D();
-
-  const fullSquare = (x: number, y: number) => {
-    p.rectMode(p.CENTER);
-    p.rect(x, y, params.cellSize, params.cellSize);
-  };
-
-  const halfSquare = (x: number, y: number) => {
-    p.rectMode(p.CENTER);
-    p.rect(x, y, params.cellSize / 2, params.cellSize / 2);
-  };
-
-  const quarterSquare = (x: number, y: number) => {
-    p.rectMode(p.CENTER);
-    p.rect(x, y, params.cellSize / 4, params.cellSize / 4);
-  };
-
-  const shapeRenderers = [fullSquare, fullSquare, halfSquare, quarterSquare];
-
-  // Before sketch start
-  p.preload = () => {
-    gui.add(params, "debug");
-    gui.add(params, "n", 4, 100).step(1);
-    gui.add(params, "noiseScale", 0, 1).step(0.001);
-  };
+  let graphics: Graphics = null;
+  let figure: Figure = null;
+  let noise = createNoise3D();
 
   p.setup = () => {
+    graphics = p.createGraphics(params.size / params.scaleFactor, params.size / params.scaleFactor);
+
     p.createCanvas(params.size, params.size);
-
-    if (params.debug) {
-      stats.showPanel(0);
-      document.body.appendChild(stats.dom);
-    }
-
     p.noStroke();
+
+    // FPS graph gui
+    stats.showPanel(0);
+    document.body.appendChild(stats.dom);
+
+    figure = new Figure(0);
+
+    figure.draw(graphics);
+
+    p.frameRate(20);
   };
 
   p.draw = () => {
-    params.cellSize = Math.ceil(params.size / params.n);
+    stats.begin();
+    p.background(255);
 
-    params.debug && stats.begin();
+    dt += p.deltaTime;
 
-    p.background(255, 50);
+    p.noSmooth();
 
-    for (let i = 0; i < params.n; i++) {
-      for (let j = 0; j < params.n; j++) {
-        const x = params.cellSize / 2 + params.cellSize * i;
-        const y = params.cellSize / 2 + params.cellSize * j;
+    figure = new Figure(0);
 
-        let colorNoise = noise(
-          i * params.noiseScale,
-          j * params.noiseScale + dt / 5000,
-          dt / 5000,
-          0
-        );
+    graphics.background(125 + Math.sin(dt / 1000) * 125, 10);
+    figure.draw(graphics);
 
-        // let shapeNoise = noise(
-        //   1000 + i * params.noiseScale + p.sin((dt + 1000)/2000),
-        //   1000 + j * params.noiseScale + dt / 2000,
-        //   dt / 3000,
-        //   0
-        // );
-
-        let colorIndex = Math.ceil(
-          p.map(colorNoise, -1, 1, 0, colorPalette.length - 1)
-        );
-
-        let shapeIndex = Math.ceil(
-          p.map(colorNoise, -1, 1, 0, shapeRenderers.length - 1)
-        );
-
-        p.fill(colorPalette[colorIndex]);
-
-        shapeRenderers[shapeIndex](x, y);
+    for (let x = 0; x < graphics.width; x += 1) {
+      for (let y = 0; y < graphics.height; y += 1) {
+        let n = noise(x/10, (y+y)/10 + dt/1000, dt / 1000);
+        let brightness = p.map(n, -1, 1, 125, 255);
+        p.noStroke()
+        graphics.fill(brightness, brightness, brightness, 5);
+        graphics.rect(x, y, 1, 1);
       }
     }
 
-    // Increase counter
-    dt += p.deltaTime;
+    p.image(graphics, 0, 0, params.size, params.size);
 
-    params.debug && stats.end();
+    stats.end();
   };
 };
 
